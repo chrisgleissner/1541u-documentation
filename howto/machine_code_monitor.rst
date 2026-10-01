@@ -7,7 +7,7 @@ It supports hexadecimal, ASCII, screen-code, binary, and assembly views, plus in
 
 Almost every command is a single keypress, and the monitor stays open until you exit it, so you can move freely between views and operations. If you forget a key, press ``F3`` for the on-screen help.
 
-*Applies to: Ultimate 1541-II, Ultimate-II+, Ultimate 64*
+*Applies to: Ultimate-II+, Ultimate-II+L, Ultimate 64, Ultimate 64 II. The original Ultimate 1541-II does not carry the monitor.*
 
 Entry and Exit
 --------------
@@ -60,7 +60,9 @@ Header
 ~~~~~~
 
 -  Shows the current view, cursor address, and active modes.
--  Mode indicators may include ``Undoc``, ``Frz``, ``Poll``, or ``EDIT``.
+-  Mode indicators may include ``Undoc``, ``Range``, ``Frz``, ``Poll``, ``Dbg``, or ``EDIT``.
+-  Each indicator has a fixed slot, counted back from the right edge. ``Undoc`` and ``Range`` share one slot, and
+   ``Poll`` and ``Dbg`` share another, so only one of each pair appears at a time.
 
 Body
 ~~~~
@@ -330,7 +332,21 @@ Value   Meaning
 
 Cartridges can further affect the CPU-visible memory map through the expansion-port ``GAME`` and ``EXROM`` lines.
 
-An Ultimate-II+ has no monitor-selectable CPU bank, so its footer reports the VIC bank alone::
+The monitor tracks two CPU banks: the one the running 6510 executes from, taken from ``$0001``, and the one selected
+with ``O`` for the view. While they match, the footer shows a single ``CPUx``. While they differ it shows both, as
+``CxOy``, where ``Cx`` is the executing bank and ``Oy`` is the view bank::
+
+   CPU7 $A:BAS $D:I/O $E:KRN VIC0 $0000
+   C7O5 $A:RAM $D:I/O $E:RAM VIC0 $0000
+
+The two differ where the monitor does not own the machine, so the running program keeps its own banking while ``O``
+moves the view. In UI Freeze mode the machine is stopped and the two stay in step.
+
+After a machine reset, the next fresh monitor open syncs its view bank to the executing bank. Closing and reopening
+the monitor with no reset in between keeps a view bank chosen with ``O``.
+
+An Ultimate-II+ has no monitor-selectable CPU bank. It reports the executing bank instead, in the same fields, as
+soon as it has read the 6510's port. Until then its footer carries the VIC bank alone::
 
    CPU VIEW  VIC0 $0000
 
@@ -862,6 +878,12 @@ Additional Notes
 Use **UI Freeze** mode when the monitor output must be captured in the video stream.
 
 Use **UI Overlay on HDMI** mode when polling is needed to observe live changes.
+
+While the machine is frozen, the firmware's own menu is using screen RAM, the 2 KB above it, and color RAM for its
+display. The monitor reads and writes those three ranges, ``$0400``-``$07FF``, ``$0800``-``$0FFF`` and
+``$D800``-``$DBFF``, in the copy taken at freeze time, which is put back when the machine unfreezes. What you see and
+edit there is the frozen program's memory rather than the menu on the screen in front of you, and an edit lands in
+the program when it resumes.
 
 To switch between UI Freeze and UI Overlay modes:
 
